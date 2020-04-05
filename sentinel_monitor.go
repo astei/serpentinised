@@ -6,6 +6,7 @@ import (
 	"go.uber.org/zap"
 	"strings"
 	"sync/atomic"
+	"time"
 )
 
 type RedisSentinelMonitor struct {
@@ -16,17 +17,19 @@ type RedisSentinelMonitor struct {
 
 func NewRedisSentinelMonitor(sentinelAddress, sentinelMaster string) (*RedisSentinelMonitor, error) {
 	var monitor RedisSentinelMonitor
-	sentinelConn, err := redis.Dial("tcp", sentinelAddress)
+	sentinelConn, err := redis.Dial("tcp", sentinelAddress, redis.DialConnectTimeout(5*time.Second))
 	if err != nil {
 		return nil, err
 	}
 
+	logger.Info("successfully connected")
 	monitor.sentinelConn = sentinelConn
 	monitor.sentinelMaster = sentinelMaster
 	masterAddr, err := monitor.getInitialMaster()
 	if err != nil {
 		return nil, err
 	}
+	logger.Info("redis master obtained", zap.String("master", masterAddr))
 
 	// Sentinel is good, let's initialize it
 	monitor.setCurrentMaster(masterAddr)
@@ -53,11 +56,12 @@ func (monitor *RedisSentinelMonitor) setCurrentMaster(addr string) {
 
 func (monitor *RedisSentinelMonitor) monitorSentinelChanges() {
 	psc := redis.PubSubConn{Conn: monitor.sentinelConn}
-	if err := psc.Subscribe("switch-master"); err != nil {
+	if err := psc.Subscribe("+switch-master"); err != nil {
 		logger.Error("unable to subscribe to switch-master messages from sentinel", zap.Error(err))
 		return
 	}
 
+	logger.Info("listening for switch-master messages from sentinel")
 	for {
 		messageRaw := psc.Receive()
 		message, wasMessage := messageRaw.(redis.Message)
@@ -66,6 +70,7 @@ func (monitor *RedisSentinelMonitor) monitorSentinelChanges() {
 			continue
 		}
 
+		logger.Debug("received switch-master message", zap.String("message", string(message.Data)))
 		// <master name> <oldip> <oldport> <newip> <newport>
 		switchMessageData := strings.Split(string(message.Data), " ")
 		if len(switchMessageData) != 5 {
@@ -82,7 +87,7 @@ func (monitor *RedisSentinelMonitor) monitorSentinelChanges() {
 		newMasterPort := switchMessageData[4]
 		newMasterAddr := fmt.Sprintf("%s:%s", newMasterHost, newMasterPort)
 		logger.Info("old master came down, new master elected - switching over",
-			zap.String("old-master", monitor.sentinelMaster),
+			zap.String("old-master", monitor.getCurrentMaster()),
 			zap.String("new-master", newMasterAddr))
 		monitor.setCurrentMaster(newMasterAddr)
 	}

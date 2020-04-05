@@ -19,12 +19,13 @@ var (
 func main() {
 	flag.Parse()
 
-	logger, err := zap.NewDevelopment()
+	initLogger, err := zap.NewDevelopment()
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "unable to initialize logger: %v", err)
 		os.Exit(1)
 		return
 	}
+	logger = initLogger
 
 	if *redisSentinelAddress == "" {
 		logger.Error("A Redis Sentinel address is required.")

@@ -25,6 +25,7 @@ func NewSerpentinisedServer(addr string, monitor *RedisSentinelMonitor) (*Serpen
 }
 
 func (server *SerpentinisedServer) Listen() (err error) {
+	logger.Info("now accepting connections")
 	for {
 		conn, err := server.listener.Accept()
 		if err != nil {
