@@ -19,7 +19,7 @@ var (
 func main() {
 	flag.Parse()
 
-	initLogger, err := zap.NewDevelopment()
+	initLogger, err := zap.NewProduction()
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "unable to initialize logger: %v", err)
 		os.Exit(1)
