@@ -74,7 +74,7 @@ func (monitor *RedisSentinelMonitor) monitorSentinelChanges() {
 		}
 
 		relevantMaster := switchMessageData[0]
-		if relevantMaster == monitor.sentinelMaster {
+		if relevantMaster != monitor.sentinelMaster {
 			logger.Debug("ignoring irrelevant switch-master message", zap.String("master", relevantMaster))
 			continue
 		}
