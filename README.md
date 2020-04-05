@@ -15,6 +15,14 @@ While this solution worked, it had numerous CPU consumption issues, including
 spawning a `redis-cli` instance every second. `serpentinised` connects to the
 Redis Sentinel server directly and listens for any failover changes.
 
+## Docker
+
+You can use `serpentinised` as a Docker container:
+
+```
+docker run -p 6379:6379 -it astei/serpentinised:latest /serpentinised -sentinel-address=sentinel-service.local:5000 -sentinel-master=mymaster
+```
+
 ## Usage
 
 ```
